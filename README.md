@@ -1,0 +1,130 @@
+# AgriThrive
+
+AgriThrive is a full-stack agricultural assistant platform that provides market prices, AI-powered price predictions, crop diagnosis, legal templates and advice, scheme navigation, and a chatbot assistant. The repository contains a Node/Express backend and a React + Vite + TypeScript frontend (with Supabase for auth and storage).
+
+Live demo
+---------
+- Frontend (live): https://agri-thrive.vercel.app/
+- Backend (deployed): https://agrithrive.onrender.com/
+
+Repository layout
+-----------------
+- `backend/` - Node/Express backend, API routes, AI integrations.
+- `frontend/` - Vite + React + TypeScript frontend (uses Supabase for auth & session).
+- `.gitignore` - repo ignore rules
+
+Main features
+-------------
+- Market prices and comparison across markets
+- 7/15/30-day AI price predictions
+- Crop diagnosis page (image upload + basic AI diagnostics)
+- Legal templates and document analysis
+- Scheme navigator with filters & saved schemes
+- Chatbot assistant (AI-powered)
+- User profile management (uses Supabase auth/session)
+
+Tech stack
+----------
+- Frontend: React + TypeScript, Vite, Tailwind CSS, Recharts
+- Backend: Node.js + Express
+- Authentication & storage: Supabase
+- AI integrations: Google Generative AI/other services (back-end)
+
+Prerequisites
+-------------
+- Node.js (v18+ recommended)
+- npm (or Yarn/pnpm) installed
+- (Optional) Supabase project if running features that require auth/storage
+
+Environment variables
+---------------------
+Create `.env` files in the `frontend/` and `backend/` directories (not committed). Example values used by this repo:
+
+Frontend (`frontend/.env`)
+```
+VITE_SUPABASE_URL=https://<your-supabase>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon-key>
+VITE_API_URL=https://agrithrive.onrender.com
+```
+
+Backend (`backend/.env`)
+```
+PORT=5000
+SUPABASE_URL=https://<your-supabase>.supabase.co
+SUPABASE_SERVICE_KEY=<service-role-key>
+GEMINI_API_KEY=<google-gemini-key>
+# other secrets used by routes (DB, S3, etc.)
+```
+
+Important: Do not commit `.env` files. If secrets were accidentally committed, rotate them immediately and remove from git history.
+
+Run locally (Windows PowerShell)
+-------------------------------
+Follow these steps to run backend and frontend locally.
+
+1) Backend
+
+```powershell
+cd backend
+npm install
+# create backend/.env with required variables (see above)
+npm run dev
+```
+
+By default the backend listens on `PORT` (5000). The API routes are mounted under `/api` (for example: `http://localhost:5000/api/schemes`). When running against the deployed backend, the frontend uses `VITE_API_URL`.
+
+2) Frontend
+
+```powershell
+cd frontend
+npm install
+# create frontend/.env with required variables (see above)
+npm run dev
+```
+
+This starts Vite dev server (default port may be 5173 or as configured). The frontend uses `import.meta.env.VITE_API_URL` to call the backend. By default in this repo `VITE_API_URL` is set to `https://agrithrive.onrender.com` to point to the deployed backend.
+
+Build and preview
+-----------------
+- Frontend production build:
+```powershell
+cd frontend
+npm run build
+npm run preview
+```
+
+- Backend production: use your preferred process manager (pm2, Docker, or hosting platform). Example (simple):
+```powershell
+cd backend
+npm install --production
+node index.js
+```
+
+Troubleshooting
+---------------
+- CORS errors: If your browser console shows CORS errors when calling the backend, ensure the backend `cors()` middleware allows the frontend origin(s) or set it to allow all origins during local development.
+- Auth failures: Confirm the Supabase keys are correct and tokens are passed in the Authorization header where required.
+- 500/AI timeouts: Some AI endpoints (document parsing, predictions) may take longer. Check backend logs and increase timeouts where necessary.
+
+Security & secrets
+------------------
+- Never commit `.env` files. If a secret is leaked in git history, rotate the key and remove it from history (use `git filter-repo` or the BFG tool).
+
+CI / Deployment notes
+---------------------
+- Frontend can be deployed to Vercel (example live at https://agri-thrive.vercel.app/). Ensure `VITE_API_URL` is set in Vercel environment variables to the API host (https://agrithrive.onrender.com).
+- Backend is deployed to Render at `https://agrithrive.onrender.com/` in this setup. Ensure environment variables are configured in Render.
+
+What I changed/checked
+----------------------
+- Verified frontend `.env` currently contains `VITE_API_URL=https://agrithrive.onrender.com` so frontend points to deployed backend by default.
+- Looked for hardcoded `localhost:5000` references and replaced them with `import.meta.env.VITE_API_URL` fallbacks where appropriate (if you prefer edits reverted, let me know).
+
+Next steps / offers
+-------------------
+- I can:
+	- Run a local smoke test (fetch `/api/schemes`) and report results.
+	- Add a health-check script for local verification.
+	- Help rotate any secrets if they were committed.
+
+If you'd like me to add the smoke-test script or push these README updates to a different README (e.g., in `frontend/README.md`), tell me which one and I'll continue.
