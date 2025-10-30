@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../config/supabase');
 
-// Get user profile
+// =======================
+// Get User Profile
+// =======================
 router.get('/', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -12,12 +14,12 @@ router.get('/', async (req, res) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    // Get profile
+    // Fetch profile from Supabase
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
@@ -34,7 +36,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Create/Update profile
+// =======================
+// Create or Update Profile
+// =======================
 router.put('/', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -44,30 +48,30 @@ router.put('/', async (req, res) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    const { 
+    const {
       user_type,
-      full_name, 
-      phone, 
-      state, 
-      district, 
-      crops, 
-      farm_size, 
-      annual_income 
+      full_name,
+      phone,
+      state,
+      district,
+      crops,
+      farm_size,
+      annual_income
     } = req.body;
 
     // Validate user_type
     if (user_type && !['farmer', 'agro_startup'].includes(user_type)) {
-      return res.status(400).json({ 
-        error: 'Invalid user_type. Must be either "farmer" or "agro_startup"' 
+      return res.status(400).json({
+        error: 'Invalid user_type. Must be either "farmer" or "agro_startup"',
       });
     }
 
-    // Check if profile exists
+    // Check if profile already exists
     const { data: existingProfile } = await supabase
       .from('profiles')
       .select('id')
@@ -75,6 +79,7 @@ router.put('/', async (req, res) => {
       .single();
 
     let result;
+
     if (existingProfile) {
       // Update existing profile
       result = await supabase
@@ -88,7 +93,7 @@ router.put('/', async (req, res) => {
           crops,
           farm_size,
           annual_income,
-          updated_at: new Date()
+          updated_at: new Date(),
         })
         .eq('user_id', user.id)
         .select()
@@ -106,7 +111,7 @@ router.put('/', async (req, res) => {
           district,
           crops,
           farm_size,
-          annual_income
+          annual_income,
         })
         .select()
         .single();
@@ -116,9 +121,9 @@ router.put('/', async (req, res) => {
       return res.status(400).json({ error: result.error.message });
     }
 
-    res.json({ 
+    res.json({
       message: 'Profile updated successfully',
-      profile: result.data 
+      profile: result.data,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

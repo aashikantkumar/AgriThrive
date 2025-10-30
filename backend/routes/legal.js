@@ -21,21 +21,70 @@ const upload = multer({
   }
 });
 
-// GET legal templates
+// GET legal templates from storage bucket
 router.get('/templates', async (req, res) => {
   try {
-    const { data: templates, error } = await supabase
-      .from('legal_templates')
-      .select('*')
-      .order('created_at', { ascending: false });
+    console.log('Fetching files from legal-templates bucket...');
+    
+    // List files from the storage bucket
+    const { data: files, error } = await supabase
+      .storage
+      .from('legal-templates')
+      .list('', {
+        limit: 100,
+        offset: 0,
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+
+    console.log('Files:', files);
+    console.log('Error:', error);
 
     if (error) {
-      return res.status(400).json({ error: error.message });
+      return res.status(400).json({ 
+        error: error.message,
+        details: error 
+      });
     }
 
-    res.json({ templates });
+    if (!files || files.length === 0) {
+      return res.json({ 
+        templates: [],
+        message: 'No files found in bucket'
+      });
+    }
+
+    // Generate URLs for each file
+    const templates = files
+      .filter(file => file.name !== '.emptyFolderPlaceholder') // Filter out placeholder
+      .map(file => {
+        // For public bucket
+        const { data } = supabase
+          .storage
+          .from('legal-templates')
+          .getPublicUrl(file.name);
+
+        return {
+          id: file.id,
+          name: file.name,
+          size: file.metadata?.size || 0,
+          created_at: file.created_at,
+          updated_at: file.updated_at,
+          download_url: data.publicUrl,
+          type: file.metadata?.mimetype || 'application/pdf'
+        };
+      });
+
+    res.json({ 
+      templates,
+      count: templates.length 
+    });
+    
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Templates fetch error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: error.stack 
+    });
   }
 });
 
@@ -122,6 +171,22 @@ Analyze the document and return a JSON response with this exact structure:
       analysis: analysis
     });
 
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/test-storage', async (req, res) => {
+  try {
+    const { data: buckets, error } = await supabase
+      .storage
+      .listBuckets();
+
+    res.json({ 
+      buckets,
+      error,
+      message: 'Connection test'
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
