@@ -98,7 +98,12 @@ const getAuthHeaders = async () => {
 };
 
 // Fetch current prices
-export const useCurrentPrices = (state: string, district: string, commodity: string) => {
+export const useCurrentPrices = (
+  state: string, 
+  district: string, 
+  commodity: string, 
+  hasSearched: boolean
+) => {
   return useQuery({
     queryKey: ['marketPrices', 'current', state, district, commodity],
     queryFn: async (): Promise<CurrentPriceResponse> => {
@@ -116,13 +121,18 @@ export const useCurrentPrices = (state: string, district: string, commodity: str
       
       return response.json();
     },
-    enabled: !!state && !!commodity,
+    enabled: hasSearched && !!state && !!commodity,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
 // Fetch price history
-export const usePriceHistory = (state: string, commodity: string, days: number = 90) => {
+export const usePriceHistory = (
+  state: string, 
+  commodity: string, 
+  days: number = 90, 
+  hasSearched: boolean
+) => {
   return useQuery({
     queryKey: ['marketPrices', 'history', state, commodity, days],
     queryFn: async () => {
@@ -139,7 +149,7 @@ export const usePriceHistory = (state: string, commodity: string, days: number =
       
       return response.json();
     },
-    enabled: !!state && !!commodity,
+    enabled: hasSearched && !!state && !!commodity,
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -170,7 +180,11 @@ export const usePricePrediction = () => {
 };
 
 // Compare markets
-export const useMarketComparison = (state: string, commodity: string) => {
+export const useMarketComparison = (
+  state: string, 
+  commodity: string, 
+  hasSearched: boolean
+) => {
   return useQuery({
     queryKey: ['marketPrices', 'compare', state, commodity],
     queryFn: async () => {
@@ -187,7 +201,7 @@ export const useMarketComparison = (state: string, commodity: string) => {
       
       return response.json();
     },
-    enabled: !!state && !!commodity,
+    enabled: hasSearched && !!state && !!commodity,
     staleTime: 5 * 60 * 1000,
   });
 };

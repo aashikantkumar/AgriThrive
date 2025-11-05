@@ -27,10 +27,11 @@ const MarketPrice = () => {
   const currentPricesQuery = useCurrentPrices(
     filters.state,
     filters.district,
-    filters.commodity
+    filters.commodity,
+    hasSearched
   );
-  const historyQuery = usePriceHistory(filters.state, filters.commodity, 90);
-  const comparisonQuery = useMarketComparison(filters.state, filters.commodity);
+  const historyQuery = usePriceHistory(filters.state, filters.commodity, 90, hasSearched);
+  const comparisonQuery = useMarketComparison(filters.state, filters.commodity, hasSearched);
 
   const handleSearch = (newFilters: typeof filters) => {
     setFilters(newFilters);
@@ -167,7 +168,7 @@ const MarketPrice = () => {
                     <p className="text-muted-foreground">Future forecasts</p>
                   </div>
                   <div className="bg-muted p-4 rounded-lg">
-                    <p className="font-semibold mb-1">🏪 Compare Markets</p>
+                    <p className="font-semibold mb-1">🪙 Compare Markets</p>
                     <p className="text-muted-foreground">Best opportunities</p>
                   </div>
                 </div>
