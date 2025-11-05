@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import Navigation from "@/components/Navigation";
-import { Sprout, Loader2 } from "lucide-react";
+import { Sprout, Loader2, Mail, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
@@ -17,6 +18,8 @@ const Register = () => {
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
+  const [showVerificationAlert, setShowVerificationAlert] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
   
   const { signUp } = useAuth();
   const { toast } = useToast();
@@ -65,9 +68,17 @@ const Register = () => {
           variant: "destructive",
         });
       } else {
+        // Store the email for display
+        setRegisteredEmail(formData.email);
+        
+        // Show success alert with email verification info
+        setShowVerificationAlert(true);
+        
         toast({
-          title: "Registration Successful! 🎉",
-          description: "Please check your email to verify your account.",
+          title: "Account Created! 🎉",
+          description: "Check your email inbox to verify your account.",
+          variant: "success",
+          duration: 8000,
         });
         
         // Clear form
@@ -77,11 +88,6 @@ const Register = () => {
           password: "",
           confirmPassword: "",
         });
-        
-        // Redirect to login after 2 seconds
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
       }
     } catch (error: any) {
       toast({
@@ -118,6 +124,35 @@ const Register = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {showVerificationAlert && (
+              <Alert className="mb-6 border-green-500 bg-green-50 dark:bg-green-900/20">
+                <Mail className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <AlertTitle className="text-green-900 dark:text-green-100 font-semibold">
+                  Verify Your Email Address
+                </AlertTitle>
+                <AlertDescription className="text-green-800 dark:text-green-200 mt-2">
+                  <div className="space-y-2">
+                    <p className="font-medium">
+                      We've sent a verification link to <strong>{registeredEmail}</strong>
+                    </p>
+                    <div className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>Click the link in your email to activate your account</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm">
+                      <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>Check your spam folder if you don't see it</span>
+                    </div>
+                    <Button 
+                      onClick={() => navigate("/login")} 
+                      className="mt-3 w-full bg-green-600 hover:bg-green-700"
+                    >
+                      Go to Login
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -127,7 +162,7 @@ const Register = () => {
                   placeholder="Enter your name"
                   value={formData.name}
                   onChange={handleChange}
-                  disabled={loading}
+                  disabled={loading || showVerificationAlert}
                   required
                 />
               </div>
@@ -139,7 +174,7 @@ const Register = () => {
                   placeholder="farmer@example.com"
                   value={formData.email}
                   onChange={handleChange}
-                  disabled={loading}
+                  disabled={loading || showVerificationAlert}
                   required
                 />
               </div>
@@ -151,7 +186,7 @@ const Register = () => {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
-                  disabled={loading}
+                  disabled={loading || showVerificationAlert}
                   required
                   minLength={6}
                 />
@@ -164,12 +199,12 @@ const Register = () => {
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  disabled={loading}
+                  disabled={loading || showVerificationAlert}
                   required
                   minLength={6}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || showVerificationAlert}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
