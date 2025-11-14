@@ -23,6 +23,12 @@ Main features
 - Chatbot assistant (AI-powered)
 - User profile management (uses Supabase auth/session)
 
+
+
+🔧 Data Authenticity:
+ Government Schemes and Market Prices are fetched directly from official datasets on https://www.data.gov.in/
+ via API integration — ensuring real, reliable, up-to-date information (not AI-generated).
+
 Tech stack
 ----------
 - Frontend: React + TypeScript, Vite, Tailwind CSS, Recharts
