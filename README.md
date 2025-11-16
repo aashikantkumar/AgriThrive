@@ -90,47 +90,4 @@ npm run dev
 
 This starts Vite dev server (default port may be 5173 or as configured). The frontend uses `import.meta.env.VITE_API_URL` to call the backend. By default in this repo `VITE_API_URL` is set to `https://agrithrive.onrender.com` to point to the deployed backend.
 
-Build and preview
------------------
-- Frontend production build:
-```powershell
-cd frontend
-npm run build
-npm run preview
-```
 
-- Backend production: use your preferred process manager (pm2, Docker, or hosting platform). Example (simple):
-```powershell
-cd backend
-npm install --production
-node index.js
-```
-
-Troubleshooting
----------------
-- CORS errors: If your browser console shows CORS errors when calling the backend, ensure the backend `cors()` middleware allows the frontend origin(s) or set it to allow all origins during local development.
-- Auth failures: Confirm the Supabase keys are correct and tokens are passed in the Authorization header where required.
-- 500/AI timeouts: Some AI endpoints (document parsing, predictions) may take longer. Check backend logs and increase timeouts where necessary.
-
-Security & secrets
-------------------
-- Never commit `.env` files. If a secret is leaked in git history, rotate the key and remove it from history (use `git filter-repo` or the BFG tool).
-
-CI / Deployment notes
----------------------
-- Frontend can be deployed to Vercel (example live at https://agri-thrive.vercel.app/). Ensure `VITE_API_URL` is set in Vercel environment variables to the API host (https://agrithrive.onrender.com).
-- Backend is deployed to Render at `https://agrithrive.onrender.com/` in this setup. Ensure environment variables are configured in Render.
-
-What I changed/checked
-----------------------
-- Verified frontend `.env` currently contains `VITE_API_URL=https://agrithrive.onrender.com` so frontend points to deployed backend by default.
-- Looked for hardcoded `localhost:5000` references and replaced them with `import.meta.env.VITE_API_URL` fallbacks where appropriate (if you prefer edits reverted, let me know).
-
-Next steps / offers
--------------------
-- I can:
-	- Run a local smoke test (fetch `/api/schemes`) and report results.
-	- Add a health-check script for local verification.
-	- Help rotate any secrets if they were committed.
-
-If you'd like me to add the smoke-test script or push these README updates to a different README (e.g., in `frontend/README.md`), tell me which one and I'll continue.
