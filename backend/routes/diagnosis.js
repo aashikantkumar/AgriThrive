@@ -113,7 +113,7 @@ Carefully examine the image and return a JSON response with this exact structure
 - Consider common Indian crop diseases`;
 
     // Call Gemini Vision API
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
     const result = await model.generateContent([
       prompt,

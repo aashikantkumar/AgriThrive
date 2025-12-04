@@ -80,7 +80,7 @@ const fetchMarketData = async (filters = {}) => {
     // console.log('Fetching from:', url);
     
     const response = await axios.get(url, {
-      timeout: 15000,
+      timeout: 45000,
       headers: { 'Accept': 'application/json' }
     });
     

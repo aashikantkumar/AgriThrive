@@ -77,7 +77,7 @@ const Register = () => {
         toast({
           title: "Account Created! 🎉",
           description: "Check your email inbox to verify your account.",
-          variant: "success",
+          variant: "default",
           duration: 8000,
         });
         
