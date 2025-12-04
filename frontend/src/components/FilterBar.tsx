@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,11 @@ interface FilterBarProps {
     commodity: string;
   }) => void;
   isLoading?: boolean;
+  initialFilters?: {
+    state: string;
+    district: string;
+    commodity: string;
+  };
 }
 
 const STATES = [
@@ -50,10 +55,19 @@ const COMMODITIES = [
   'Bajra',
 ];
 
-export default function FilterBar({ onSearch, isLoading }: FilterBarProps) {
-  const [state, setState] = useState('Bihar');
-  const [district, setDistrict] = useState('');
-  const [commodity, setCommodity] = useState('Wheat');
+export default function FilterBar({ onSearch, isLoading, initialFilters }: FilterBarProps) {
+  const [state, setState] = useState(initialFilters?.state || 'Bihar');
+  const [district, setDistrict] = useState(initialFilters?.district || '');
+  const [commodity, setCommodity] = useState(initialFilters?.commodity || 'Wheat');
+
+  // Sync with initial filters when they change (from URL)
+  useEffect(() => {
+    if (initialFilters) {
+      setState(initialFilters.state || 'Bihar');
+      setDistrict(initialFilters.district || '');
+      setCommodity(initialFilters.commodity || 'Wheat');
+    }
+  }, [initialFilters?.state, initialFilters?.district, initialFilters?.commodity]);
 
   const handleSearch = () => {
     if (!state || !commodity) {

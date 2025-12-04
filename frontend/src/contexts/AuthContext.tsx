@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 
@@ -52,11 +52,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
 
+  // Track if we've already fetched the profile to prevent duplicate calls
+  const hasFetchedProfileRef = useRef(false);
+  const lastUserIdRef = useRef<string | null>(null);
+
   // Check if profile is complete
   const isProfileComplete = profile !== null;
 
   // Fetch user profile from Supabase
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, forceRefresh = false) => {
+    // Skip if we've already fetched for this user (unless forced)
+    if (!forceRefresh && hasFetchedProfileRef.current && lastUserIdRef.current === userId) {
+      return;
+    }
+
     try {
       setProfileLoading(true);
       const { data, error } = await supabase
@@ -75,6 +84,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } else {
         setProfile(data);
       }
+
+      // Mark as fetched
+      hasFetchedProfileRef.current = true;
+      lastUserIdRef.current = userId;
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
@@ -85,7 +98,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Refresh profile (call this after updating profile)
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id);
+      await fetchProfile(user.id, true); // Force refresh
     }
   };
 
@@ -94,27 +107,39 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         fetchProfile(session.user.id);
       }
-      
+
       setLoading(false);
     });
 
-    // Listen for auth changes
+    // Listen for auth changes - but only act on real auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only process actual sign-in/sign-out events, not token refreshes
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (event === 'SIGNED_OUT') {
+          // Clear profile on sign out
+          setProfile(null);
+          hasFetchedProfileRef.current = false;
+          lastUserIdRef.current = null;
+        } else if (session?.user && event === 'SIGNED_IN') {
+          // Only fetch on explicit sign in (not token refresh)
+          fetchProfile(session.user.id);
+        }
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Just update session, don't refetch profile
+        setSession(session);
+        setUser(session?.user ?? null);
+        // DON'T call fetchProfile here - this prevents refetch on tab switch!
       }
-      
+
       setLoading(false);
     });
 
@@ -154,9 +179,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error };
       }
 
-      // Fetch profile after login
+      // Fetch profile after login (force refresh)
       if (data.user) {
-        await fetchProfile(data.user.id);
+        await fetchProfile(data.user.id, true);
       }
 
       return { error: null };
@@ -168,6 +193,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    hasFetchedProfileRef.current = false;
+    lastUserIdRef.current = null;
   };
 
   const resetPassword = async (email: string) => {
