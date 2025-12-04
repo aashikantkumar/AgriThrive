@@ -2,6 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { persistQueryClient } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -18,7 +20,32 @@ import Chatbot from "./pages/Chatbot";
 import Feedback from "./pages/Feedback";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Create a client with proper caching configuration to prevent refetching on tab switch
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes - data stays fresh
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours cache retention
+      refetchOnWindowFocus: false, // DON'T refetch when tab regains focus
+      refetchOnReconnect: false, // DON'T refetch on internet reconnect
+      refetchOnMount: false, // DON'T refetch when component mounts if data exists
+      retry: 1, // Only retry once on failure
+    },
+  },
+});
+
+// Persist the React Query cache to localStorage
+const localStoragePersister = createSyncStoragePersister({
+  storage: window.localStorage,
+  key: 'agrithrive-query-cache',
+});
+
+// Setup persistence - cached API data survives page refreshes
+persistQueryClient({
+  queryClient,
+  persister: localStoragePersister,
+  maxAge: 1000 * 60 * 60 * 24, // 24 hours max age for persisted cache
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -32,7 +59,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            
+
             {/* Profile Route - Don't require profile to access profile page */}
             <Route
               path="/profile"
@@ -42,7 +69,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Protected Routes - Require complete profile */}
             <Route
               path="/schemes"
@@ -100,7 +127,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            
+
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>

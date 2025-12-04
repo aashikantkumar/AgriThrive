@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  MessageCircle, 
-  Send, 
+import { usePersistedState } from "@/hooks/usePersistedState";
+import {
+  MessageCircle,
+  Send,
   Bot,
   User,
   Loader2,
-  Sparkles
+  Sparkles,
+  Trash2
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -26,6 +28,14 @@ const QUICK_QUESTIONS = [
   { id: 6, text: "Irrigation Tips", question: "What are the best irrigation practices for water conservation?" },
 ];
 
+interface ChatMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  isError?: boolean;
+}
+
 const TypingIndicator = () => (
   <div className="flex items-center gap-1 px-4 py-3 bg-muted rounded-2xl rounded-bl-sm w-fit">
     <div className="flex gap-1">
@@ -37,14 +47,15 @@ const TypingIndicator = () => (
 );
 
 const Chatbot = () => {
-  const [messages, setMessages] = useState([]);
+  // Persist messages to localStorage
+  const [messages, setMessages] = usePersistedState<ChatMessage[]>('agrithrive-chat-messages', []);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showQuickQuestions, setShowQuickQuestions] = useState(true);
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { session } = useAuth();
-  
+
   const avatars = {
     user: "/image2.png",
     assistant: "/image1.png"
@@ -58,24 +69,34 @@ const Chatbot = () => {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  // Add welcome message only if no messages exist
   useEffect(() => {
-    const welcomeMessage = {
-      id: Date.now(),
-      role: 'assistant',
-      content: `Hello! I'm AgriBot 🌾, your agricultural assistant. I'm here to help you with farming advice, government schemes, market information, and more. How can I assist you today?`,
-      timestamp: new Date().toISOString()
-    };
-    setMessages([welcomeMessage]);
+    if (messages.length === 0) {
+      const welcomeMessage: ChatMessage = {
+        id: Date.now(),
+        role: 'assistant',
+        content: `Hello! I'm AgriBot 🌾, your agricultural assistant. I'm here to help you with farming advice, government schemes, market information, and more. How can I assist you today?`,
+        timestamp: new Date().toISOString()
+      };
+      setMessages([welcomeMessage]);
+    }
   }, []);
 
-  const sendMessage = async (messageText = null) => {
+  // Hide quick questions if there are more than just the welcome message
+  useEffect(() => {
+    if (messages.length > 1) {
+      setShowQuickQuestions(false);
+    }
+  }, [messages]);
+
+  const sendMessage = async (messageText: string | null = null) => {
     const userMessage = messageText || input.trim();
-    
+
     if (!userMessage) return;
 
     setShowQuickQuestions(false);
 
-    const newUserMessage = {
+    const newUserMessage: ChatMessage = {
       id: Date.now(),
       role: 'user',
       content: userMessage,
@@ -110,7 +131,7 @@ const Chatbot = () => {
         throw new Error(data.error || 'Failed to get response');
       }
 
-      const botMessage = {
+      const botMessage: ChatMessage = {
         id: Date.now() + 1,
         role: 'assistant',
         content: data.reply,
@@ -119,14 +140,14 @@ const Chatbot = () => {
 
       setMessages(prev => [...prev, botMessage]);
 
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to send message. Please try again.",
       });
 
-      const errorMessage = {
+      const errorMessage: ChatMessage = {
         id: Date.now() + 1,
         role: 'assistant',
         content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
@@ -139,20 +160,35 @@ const Chatbot = () => {
     }
   };
 
-  const handleQuickQuestion = (questionText) => {
+  const handleQuickQuestion = (questionText: string) => {
     sendMessage(questionText);
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
 
-  const formatTime = (timestamp) => {
+  const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const clearChat = () => {
+    const welcomeMessage: ChatMessage = {
+      id: Date.now(),
+      role: 'assistant',
+      content: `Hello! I'm AgriBot 🌾, your agricultural assistant. I'm here to help you with farming advice, government schemes, market information, and more. How can I assist you today?`,
+      timestamp: new Date().toISOString()
+    };
+    setMessages([welcomeMessage]);
+    setShowQuickQuestions(true);
+    toast({
+      title: "Chat Cleared",
+      description: "Your conversation has been cleared.",
+    });
   };
 
   return (
@@ -160,14 +196,22 @@ const Chatbot = () => {
       <Navigation />
       <div className="flex-1 container mx-auto px-4 pt-20 pb-4 flex flex-col">
         <div className="flex-1 max-w-6xl mx-auto w-full flex flex-col">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-primary/10 rounded-lg">
-              <MessageCircle className="w-6 h-6 text-primary" />
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <MessageCircle className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">AgriBot Assistant</h1>
+                <p className="text-muted-foreground text-sm">Your 24/7 agricultural expert companion</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold">AgriBot Assistant</h1>
-              <p className="text-muted-foreground text-sm">Your 24/7 agricultural expert companion</p>
-            </div>
+            {messages.length > 1 && (
+              <Button variant="outline" size="sm" onClick={clearChat} className="gap-2">
+                <Trash2 className="w-4 h-4" />
+                Clear Chat
+              </Button>
+            )}
           </div>
 
           <Card className="flex-1 flex flex-col min-h-0">
@@ -189,7 +233,7 @@ const Chatbot = () => {
                   className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
                 >
                   <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden">
-                    <img 
+                    <img
                       src={message.role === 'user' ? avatars.user : avatars.assistant}
                       alt={message.role === 'user' ? "User Avatar" : "Bot Avatar"}
                       className="w-full h-full object-cover"
@@ -198,13 +242,12 @@ const Chatbot = () => {
 
                   <div className={`flex flex-col gap-1 max-w-[75%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
                     <div
-                      className={`px-4 py-3 rounded-2xl ${
-                        message.role === 'user'
+                      className={`px-4 py-3 rounded-2xl ${message.role === 'user'
                           ? 'bg-primary text-primary-foreground rounded-br-sm'
                           : message.isError
-                          ? 'bg-destructive/10 text-destructive rounded-bl-sm'
-                          : 'bg-muted rounded-bl-sm'
-                      }`}
+                            ? 'bg-destructive/10 text-destructive rounded-bl-sm'
+                            : 'bg-muted rounded-bl-sm'
+                        }`}
                     >
                       <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
                         {message.content}
@@ -262,7 +305,7 @@ const Chatbot = () => {
                   className="flex-1 bg-background"
                   autoFocus
                 />
-                <Button 
+                <Button
                   onClick={() => sendMessage()}
                   disabled={isLoading || !input.trim()}
                   size="icon"

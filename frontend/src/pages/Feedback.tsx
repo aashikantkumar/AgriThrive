@@ -8,8 +8,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  MessageSquare, 
+import { useSessionState } from "@/hooks/usePersistedState";
+import {
+  MessageSquare,
   Star,
   Send,
   CheckCircle2,
@@ -32,10 +33,12 @@ const CATEGORIES = [
 ];
 
 const Feedback = () => {
-  const [rating, setRating] = useState(0);
+  // Use sessionStorage for form draft - clears when tab closes
+  const [rating, setRating] = useSessionState('agrithrive-feedback-rating', 0);
+  const [category, setCategory] = useSessionState('agrithrive-feedback-category', 'general');
+  const [comments, setComments] = useSessionState('agrithrive-feedback-comments', '');
+
   const [hoverRating, setHoverRating] = useState(0);
-  const [category, setCategory] = useState('general');
-  const [comments, setComments] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { toast } = useToast();
@@ -84,7 +87,7 @@ const Feedback = () => {
         resetForm();
       }, 3000);
 
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Submission Failed",
@@ -165,11 +168,10 @@ const Feedback = () => {
                       className="transition-transform hover:scale-110 focus:outline-none"
                     >
                       <Star
-                        className={`w-10 h-10 ${
-                          star <= (hoverRating || rating)
+                        className={`w-10 h-10 ${star <= (hoverRating || rating)
                             ? 'fill-yellow-400 text-yellow-400'
                             : 'text-muted-foreground'
-                        }`}
+                          }`}
                       />
                     </button>
                   ))}
@@ -231,7 +233,7 @@ const Feedback = () => {
               <Alert>
                 <MessageCircle className="h-4 w-4" />
                 <AlertDescription className="text-sm">
-                  {session 
+                  {session
                     ? "Your feedback will be associated with your account. We may reach out to you for follow-up."
                     : "You're submitting anonymous feedback. Consider logging in if you'd like us to follow up with you."}
                 </AlertDescription>

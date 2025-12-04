@@ -1,17 +1,18 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Scale, 
-  Upload, 
-  FileText, 
-  Download, 
-  Loader2, 
-  CheckCircle, 
+import { usePersistedState } from "@/hooks/usePersistedState";
+import {
+  Scale,
+  Upload,
+  FileText,
+  Download,
+  Loader2,
+  CheckCircle,
   XCircle,
   AlertTriangle,
   Info
@@ -22,15 +23,19 @@ const LegalToolkit = () => {
   const [activeTab, setActiveTab] = useState("parser");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
-  const [parsedResult, setParsedResult] = useState<ParsedDocument | null>(null);
-  const [templates, setTemplates] = useState<LegalTemplate[]>([]);
+  // Persist parsed result and templates to localStorage
+  const [parsedResult, setParsedResult] = usePersistedState<ParsedDocument | null>('agrithrive-legal-parsed', null);
+  const [templates, setTemplates] = usePersistedState<LegalTemplate[]>('agrithrive-legal-templates', []);
+  const hasFetchedTemplatesRef = useRef(false);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const { toast } = useToast();
 
-  // Load templates when switching to templates tab
+  // Load templates when switching to templates tab (only if not already fetched)
   const handleTabChange = async (value: string) => {
     setActiveTab(value);
-    if (value === "templates" && templates.length === 0) {
+    // Only fetch if templates are empty AND we haven't fetched before
+    if (value === "templates" && templates.length === 0 && !hasFetchedTemplatesRef.current) {
+      hasFetchedTemplatesRef.current = true;
       await fetchTemplates();
     }
   };

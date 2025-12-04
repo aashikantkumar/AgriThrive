@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  BookOpen, 
+import {
+  BookOpen,
   Search,
   Droplets,
   Sprout,
@@ -102,17 +103,47 @@ const AGRICULTURAL_PRACTICES = [
 ];
 
 const KnowledgeBase = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get state from URL params
+  const searchQuery = searchParams.get('q') || '';
+  const selectedCategory = searchParams.get('category') || 'All';
+
+  // Update URL params
+  const setSearchQuery = (query: string) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (query) {
+        newParams.set('q', query);
+      } else {
+        newParams.delete('q');
+      }
+      return newParams;
+    }, { replace: true });
+  };
+
+  const setSelectedCategory = (category: string) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (category && category !== 'All') {
+        newParams.set('category', category);
+      } else {
+        newParams.delete('category');
+      }
+      return newParams;
+    }, { replace: true });
+  };
 
   const categories = ['All', ...new Set(AGRICULTURAL_PRACTICES.map(p => p.category))];
 
-  const filteredPractices = AGRICULTURAL_PRACTICES.filter(practice => {
-    const matchesSearch = practice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         practice.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || practice.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredPractices = useMemo(() => {
+    return AGRICULTURAL_PRACTICES.filter(practice => {
+      const matchesSearch = practice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        practice.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'All' || practice.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchQuery, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -201,10 +232,10 @@ const KnowledgeBase = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground leading-relaxed">
-                This knowledge base provides comprehensive information about modern agricultural practices adopted across India. 
-                Each practice is carefully documented to help farmers make informed decisions about crop management, resource 
-                conservation, and sustainable farming. These practices are recommended by agricultural universities, research 
-                institutes, and Krishi Vigyan Kendras (KVKs) across the country. For specific guidance tailored to your region 
+                This knowledge base provides comprehensive information about modern agricultural practices adopted across India.
+                Each practice is carefully documented to help farmers make informed decisions about crop management, resource
+                conservation, and sustainable farming. These practices are recommended by agricultural universities, research
+                institutes, and Krishi Vigyan Kendras (KVKs) across the country. For specific guidance tailored to your region
                 and crop type, please consult your local agricultural extension officer or KVK.
               </p>
             </CardContent>

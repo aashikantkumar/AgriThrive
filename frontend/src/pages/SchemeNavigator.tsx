@@ -4,40 +4,76 @@ import FilterSidebar from "@/components/schemes/FilterSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { 
-  BookOpen, 
-  Sparkles, 
-  Search, 
+import {
+  BookOpen,
+  Sparkles,
+  Search,
   Loader2,
   AlertCircle,
   BookmarkCheck,
   Filter,
   X
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { schemeService } from "@/services/schemeService";
 import { Scheme, SchemeFilters, EligibilityAnalysis, SavedScheme } from "@/types/scheme";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePersistedState } from "@/hooks/usePersistedState";
 
 const SchemeNavigator = () => {
   const { toast } = useToast();
   const { profile } = useAuth();
-  
-  // State
-  const [activeTab, setActiveTab] = useState<'all' | 'saved'>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Track if we've already fetched to prevent duplicate API calls on tab return
+  const hasFetchedRef = useRef(false);
+  const lastFiltersRef = useRef<string>('');
+
+  // URL-based state for tab and search
+  const activeTab = (searchParams.get('tab') as 'all' | 'saved') || 'all';
+  const searchQuery = searchParams.get('q') || '';
+
+  // Regular state for data
   const [schemes, setSchemes] = useState<Scheme[]>([]);
   const [savedSchemes, setSavedSchemes] = useState<SavedScheme[]>([]);
   const [savedSchemeIds, setSavedSchemeIds] = useState<Set<string>>(new Set());
-  const [filters, setFilters] = useState<SchemeFilters>({});
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = usePersistedState<SchemeFilters>('agrithrive-scheme-filters', {});
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(true);
-  
-  // AI Eligibility
-  const [showEligibilityResults, setShowEligibilityResults] = useState(false);
-  const [eligibilityData, setEligibilityData] = useState<EligibilityAnalysis | null>(null);
+
+  // Persist eligibility data to localStorage
+  const [eligibilityData, setEligibilityData] = usePersistedState<EligibilityAnalysis | null>(
+    'agrithrive-eligibility-data',
+    null
+  );
+  const [showEligibilityResults, setShowEligibilityResults] = usePersistedState(
+    'agrithrive-show-eligibility',
+    false
+  );
   const [checkingEligibility, setCheckingEligibility] = useState(false);
+
+  // Update URL params
+  const setActiveTab = (tab: 'all' | 'saved') => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('tab', tab);
+      return newParams;
+    }, { replace: true });
+  };
+
+  const setSearchQuery = (query: string) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (query) {
+        newParams.set('q', query);
+      } else {
+        newParams.delete('q');
+      }
+      return newParams;
+    }, { replace: true });
+  };
 
   // Fetch all schemes
   const fetchSchemes = async () => {
@@ -59,21 +95,20 @@ const SchemeNavigator = () => {
   };
 
   // Fetch saved schemes
-// Fetch saved schemes
-const fetchSavedSchemes = async () => {
-  try {
-    const data = await schemeService.getSavedSchemes();
-    setSavedSchemes(data.savedSchemes || []);
-    
-    // Create a set of saved scheme IDs for quick lookup - FIX HERE
-    const ids = new Set<string>(
-      data.savedSchemes?.map((s: SavedScheme) => s.scheme_id) || []
-    );
-    setSavedSchemeIds(ids);
-  } catch (error: any) {
-    console.error('Error fetching saved schemes:', error);
-  }
-};
+  const fetchSavedSchemes = async () => {
+    try {
+      const data = await schemeService.getSavedSchemes();
+      setSavedSchemes(data.savedSchemes || []);
+
+      const ids = new Set<string>(
+        data.savedSchemes?.map((s: SavedScheme) => s.scheme_id) || []
+      );
+      setSavedSchemeIds(ids);
+    } catch (error: any) {
+      console.error('Error fetching saved schemes:', error);
+    }
+  };
+
   // Check AI Eligibility
   const handleCheckEligibility = async () => {
     if (!profile) {
@@ -90,7 +125,7 @@ const fetchSavedSchemes = async () => {
       const data = await schemeService.checkEligibility();
       setEligibilityData(data);
       setShowEligibilityResults(true);
-      
+
       toast({
         title: "✅ Eligibility Check Complete",
         description: `Found ${data.analysis.eligible_schemes.length} eligible schemes for you!`,
@@ -112,7 +147,7 @@ const fetchSavedSchemes = async () => {
       await schemeService.saveScheme(schemeId);
       setSavedSchemeIds(prev => new Set([...prev, schemeId]));
       await fetchSavedSchemes();
-      
+
       toast({
         title: "✅ Scheme Saved",
         description: "Scheme added to your saved list",
@@ -136,7 +171,7 @@ const fetchSavedSchemes = async () => {
         return newSet;
       });
       await fetchSavedSchemes();
-      
+
       toast({
         title: "Scheme Removed",
         description: "Scheme removed from your saved list",
@@ -150,8 +185,20 @@ const fetchSavedSchemes = async () => {
     }
   };
 
-  // Initial fetch
+  // Initial fetch - only fetch if data doesn't exist or filters changed
   useEffect(() => {
+    const currentFiltersStr = JSON.stringify(filters);
+
+    // Skip if we've already fetched with the same filters
+    if (hasFetchedRef.current && lastFiltersRef.current === currentFiltersStr && schemes.length > 0) {
+      setLoading(false);
+      return;
+    }
+
+    // Update refs
+    hasFetchedRef.current = true;
+    lastFiltersRef.current = currentFiltersStr;
+
     fetchSchemes();
     fetchSavedSchemes();
   }, [filters]);
@@ -159,7 +206,7 @@ const fetchSavedSchemes = async () => {
   // Filter schemes by search query
   const getFilteredSchemes = (schemesToFilter: Scheme[]) => {
     if (!searchQuery) return schemesToFilter;
-    
+
     return schemesToFilter.filter(scheme =>
       scheme.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       scheme.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -172,19 +219,18 @@ const fetchSavedSchemes = async () => {
     if (activeTab === 'saved') {
       return getFilteredSchemes(savedSchemes.map(s => s.schemes));
     }
-    
+
     if (showEligibilityResults && eligibilityData) {
-      // Show only eligible and partially eligible schemes
       const eligibleIds = [
         ...eligibilityData.analysis.eligible_schemes.map(s => s.scheme_id),
         ...eligibilityData.analysis.partially_eligible.map(s => s.scheme_id)
       ];
-      
+
       return getFilteredSchemes(
         schemes.filter(scheme => eligibleIds.includes(scheme.id))
       );
     }
-    
+
     return getFilteredSchemes(schemes);
   };
 
@@ -193,20 +239,25 @@ const fetchSavedSchemes = async () => {
   // Get match score for eligible schemes
   const getMatchScore = (schemeId: string): number | undefined => {
     if (!eligibilityData) return undefined;
-    
+
     const eligible = eligibilityData.analysis.eligible_schemes.find(s => s.scheme_id === schemeId);
     if (eligible) return eligible.match_score;
-    
+
     const partial = eligibilityData.analysis.partially_eligible.find(s => s.scheme_id === schemeId);
     if (partial) return partial.match_score;
-    
+
     return undefined;
+  };
+
+  const handleClearEligibility = () => {
+    setShowEligibilityResults(false);
+    setEligibilityData(null);
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       <div className="container mx-auto px-4 pt-24 pb-12">
         {/* Header */}
         <div className="mb-8">
@@ -220,7 +271,7 @@ const fetchSavedSchemes = async () => {
                 Discover schemes tailored to your agricultural needs
               </p>
             </div>
-            <Button 
+            <Button
               onClick={handleCheckEligibility}
               disabled={checkingEligibility}
               className="gap-2"
@@ -250,15 +301,15 @@ const fetchSavedSchemes = async () => {
                     <div>
                       <p className="font-semibold">AI Eligibility Results</p>
                       <p className="text-sm text-muted-foreground">
-                        {eligibilityData.analysis.eligible_schemes.length} fully eligible • 
+                        {eligibilityData.analysis.eligible_schemes.length} fully eligible •
                         {' '}{eligibilityData.analysis.partially_eligible.length} partially eligible
                       </p>
                     </div>
                   </div>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
-                    onClick={() => setShowEligibilityResults(false)}
+                    onClick={handleClearEligibility}
                   >
                     <X className="w-4 h-4" />
                     Clear Results
@@ -273,21 +324,19 @@ const fetchSavedSchemes = async () => {
         <div className="flex items-center gap-4 mb-6 border-b">
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
-              activeTab === 'all'
+            className={`px-4 py-2 font-medium transition-colors border-b-2 ${activeTab === 'all'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             All Schemes ({schemes.length})
           </button>
           <button
             onClick={() => setActiveTab('saved')}
-            className={`px-4 py-2 font-medium transition-colors border-b-2 flex items-center gap-2 ${
-              activeTab === 'saved'
+            className={`px-4 py-2 font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'saved'
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             <BookmarkCheck className="w-4 h-4" />
             Saved Schemes ({savedSchemes.length})
@@ -340,11 +389,11 @@ const fetchSavedSchemes = async () => {
                   <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-xl font-semibold mb-2">No Schemes Found</h3>
                   <p className="text-muted-foreground mb-4">
-                    {activeTab === 'saved' 
+                    {activeTab === 'saved'
                       ? "You haven't saved any schemes yet. Browse all schemes and save the ones you're interested in!"
                       : searchQuery
-                      ? "Try adjusting your search or filters"
-                      : "No schemes match your current filters"}
+                        ? "Try adjusting your search or filters"
+                        : "No schemes match your current filters"}
                   </p>
                   {activeTab === 'saved' && (
                     <Button onClick={() => setActiveTab('all')}>
@@ -374,4 +423,4 @@ const fetchSavedSchemes = async () => {
   );
 };
 
-export default SchemeNavigator; 
+export default SchemeNavigator;

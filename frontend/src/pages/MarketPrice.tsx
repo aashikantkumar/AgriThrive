@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import Navigation from '@/components/Navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { useUrlState } from '@/hooks/useUrlState';
 import FilterBar from '@/components/FilterBar';
 import PriceOverview from '@/components/PriceOverview';
 import MarketTable from '@/components/MarketTable';
@@ -14,14 +15,30 @@ import {
   useMarketComparison,
 } from '@/hooks/useMarketData';
 
+// Default filter values
+const DEFAULT_FILTERS = {
+  state: '',
+  district: '',
+  commodity: '',
+};
+
 const MarketPrice = () => {
   const { toast } = useToast();
-  const [filters, setFilters] = useState({
-    state: 'Bihar',
-    district: '',
-    commodity: 'Wheat',
+
+  // Use URL state for filters - persists across refreshes and tab switches
+  const { params, setParams, hasActiveParams } = useUrlState({
+    defaults: DEFAULT_FILTERS,
   });
-  const [hasSearched, setHasSearched] = useState(false);
+
+  // Derive filters from URL params
+  const filters = useMemo(() => ({
+    state: params.state || DEFAULT_FILTERS.state,
+    district: params.district || '',
+    commodity: params.commodity || DEFAULT_FILTERS.commodity,
+  }), [params]);
+
+  // Check if user has searched (has active URL params)
+  const hasSearched = hasActiveParams;
 
   // Fetch data using React Query
   const currentPricesQuery = useCurrentPrices(
@@ -34,8 +51,12 @@ const MarketPrice = () => {
   const comparisonQuery = useMarketComparison(filters.state, filters.commodity, hasSearched);
 
   const handleSearch = (newFilters: typeof filters) => {
-    setFilters(newFilters);
-    setHasSearched(true);
+    // Update URL params - this persists the state
+    setParams({
+      state: newFilters.state,
+      district: newFilters.district || '',
+      commodity: newFilters.commodity,
+    });
 
     // Show success toast
     toast({
@@ -61,7 +82,7 @@ const MarketPrice = () => {
           </div>
 
           {/* Filter Bar */}
-          <FilterBar onSearch={handleSearch} isLoading={isLoading} />
+          <FilterBar onSearch={handleSearch} isLoading={isLoading} initialFilters={filters} />
 
           {/* Loading State */}
           {isLoading && hasSearched && (
@@ -80,8 +101,8 @@ const MarketPrice = () => {
               <p className="text-destructive/80 text-sm mb-4">
                 Please check your filters and try again. Make sure the state and commodity names are correct.
               </p>
-              <button 
-                onClick={() => handleSearch(filters)} 
+              <button
+                onClick={() => handleSearch(filters)}
                 className="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
               >
                 Retry
