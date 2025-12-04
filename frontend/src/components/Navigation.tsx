@@ -1,7 +1,6 @@
-import { Moon, Sun, Sprout, User, LogOut } from "lucide-react";
+import { Sprout, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -15,25 +14,9 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const Navigation = () => {
-  const [isDark, setIsDark] = useState(false);
   const { user, signOut, isProfileComplete } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const isDarkMode = document.documentElement.classList.contains("dark");
-    setIsDark(isDarkMode);
-  }, []);
-
-  const toggleTheme = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-    if (newIsDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -80,19 +63,6 @@ const Navigation = () => {
         )}
 
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-          >
-            {isDark ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
-          </Button>
-
           {user ? (
             // Show profile dropdown when logged in
             <DropdownMenu>
