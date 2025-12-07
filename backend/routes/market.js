@@ -13,12 +13,12 @@ const getRandomDate = () => {
   const endDate = new Date();
   const randomTime = startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime());
   const randomDate = new Date(randomTime);
-  
+
   // Format as DD/MM/YYYY
   const day = String(randomDate.getDate()).padStart(2, '0');
   const month = String(randomDate.getMonth() + 1).padStart(2, '0');
   const year = randomDate.getFullYear();
-  
+
   return `${day}/${month}/${year}`;
 };
 
@@ -39,7 +39,7 @@ const verifyAuth = async (req, res, next) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    
+
     if (error || !user) {
       return res.status(401).json({ error: 'Invalid token' });
     }
@@ -78,17 +78,17 @@ const fetchMarketData = async (filters = {}) => {
 
     const url = `${DATA_GOV_BASE_URL}?${params.toString()}`;
     // console.log('Fetching from:', url);
-    
+
     const response = await axios.get(url, {
       timeout: 45000,
       headers: { 'Accept': 'application/json' }
     });
-    
+
     // console.log('API Response:', {
     //   total: response.data?.total || 0,
     //   records: response.data?.records?.length || 0
     // });
-    
+
     return response.data;
   } catch (error) {
     if (error.response) {
@@ -105,7 +105,7 @@ router.get('/current', verifyAuth, async (req, res) => {
     const { state, district, commodity } = req.query;
 
     if (!state || !commodity) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'State and commodity are required',
         example: '/api/market/current?state=Bihar&commodity=Wheat&district=Patna',
         hint: 'Use proper capitalization for State and Commodity',
@@ -131,14 +131,14 @@ router.get('/current', verifyAuth, async (req, res) => {
           commodity,
           limit: 100
         });
-        
+
         if (retryData.records && retryData.records.length > 0) {
           data.records = retryData.records;
         }
       }
-      
+
       if (!data.records || data.records.length === 0) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: 'No price data found for the specified filters',
           requestedFilters: { state, district: district || 'All', commodity },
           suggestion: 'Check spelling and capitalization',
@@ -165,7 +165,7 @@ router.get('/current', verifyAuth, async (req, res) => {
           minPrice: getRandomPrice(modalPrice * 0.9, 0.1),
           maxPrice: getRandomPrice(modalPrice * 1.1, 0.1),
           modalPrice: modalPrice,
-          date: getRandomDate() 
+          date: getRandomDate()
         };
       });
 
@@ -187,11 +187,11 @@ router.get('/current', verifyAuth, async (req, res) => {
     });
 
     // Find best and worst prices
-    const bestPrice = marketPrices.reduce((best, current) => 
+    const bestPrice = marketPrices.reduce((best, current) =>
       current.modalPrice > best.modalPrice ? current : best
     );
-    
-    const worstPrice = marketPrices.reduce((worst, current) => 
+
+    const worstPrice = marketPrices.reduce((worst, current) =>
       current.modalPrice < worst.modalPrice ? current : worst
     );
 
@@ -235,7 +235,7 @@ router.get('/current', verifyAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Error in /current endpoint:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message,
       hint: 'Check if API key is valid and data.gov.in is accessible'
     });
@@ -248,7 +248,7 @@ router.get('/history', verifyAuth, async (req, res) => {
     const { state, commodity, days = 90 } = req.query;
 
     if (!state || !commodity) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'State and commodity are required',
         example: '/api/market/history?state=Bihar&commodity=Wheat&days=90'
       });
@@ -262,7 +262,7 @@ router.get('/history', verifyAuth, async (req, res) => {
     });
 
     if (!data.records || data.records.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'No historical data found',
         requestedFilters: { state, commodity }
       });
@@ -273,7 +273,7 @@ router.get('/history', verifyAuth, async (req, res) => {
     data.records.forEach(record => {
       const date = getRandomDate(); // Random date
       const price = parseFloat(record.Modal_Price) || 0;
-      
+
       if (price > 0) {
         if (!pricesByDate[date]) {
           pricesByDate[date] = [];
@@ -340,7 +340,7 @@ router.post('/predict', verifyAuth, async (req, res) => {
     const { state, commodity, district } = req.body;
 
     if (!state || !commodity) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'State and commodity are required in request body'
       });
     }
@@ -354,7 +354,7 @@ router.post('/predict', verifyAuth, async (req, res) => {
     });
 
     if (!historicalData.records || historicalData.records.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'No historical data available for prediction',
         requestedFilters: { state, commodity, district: district || 'All' }
       });
@@ -451,7 +451,7 @@ Provide a detailed price forecast and recommendations in JSON format:
 `;
 
     // Call Gemini AI
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -459,14 +459,14 @@ Provide a detailed price forecast and recommendations in JSON format:
     // Parse JSON from response
     let prediction;
     try {
-      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || 
-                       text.match(/```\n([\s\S]*?)\n```/) ||
-                       text.match(/\{[\s\S]*\}/);
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) ||
+        text.match(/```\n([\s\S]*?)\n```/) ||
+        text.match(/\{[\s\S]*\}/);
       const jsonText = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : text;
       prediction = JSON.parse(jsonText);
     } catch (parseError) {
       console.error('Failed to parse AI response:', text);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to parse AI response',
         details: parseError.message,
         raw_response: text.substring(0, 500)
@@ -494,7 +494,7 @@ router.get('/compare', verifyAuth, async (req, res) => {
     const { state, commodity } = req.query;
 
     if (!state || !commodity) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'State and commodity are required',
         example: '/api/market/compare?state=Bihar&commodity=Wheat'
       });
@@ -508,7 +508,7 @@ router.get('/compare', verifyAuth, async (req, res) => {
     });
 
     if (!data.records || data.records.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'No market data found for comparison',
         requestedFilters: { state, commodity }
       });
@@ -598,15 +598,15 @@ router.get('/compare', verifyAuth, async (req, res) => {
 // router.get('/test-states', verifyAuth, async (req, res) => {
 //   try {
 //     const { commodity = 'Wheat' } = req.query;
-    
+
 //     const testStates = [
 //       'Delhi', 'Bihar', 'Punjab', 'Haryana', 'Uttar Pradesh', 
 //       'Jharkhand', 'Madhya Pradesh', 'Maharashtra', 'Karnataka',
 //       'Tamil Nadu', 'Gujarat', 'Rajasthan', 'West Bengal'
 //     ];
-    
+
 //     const results = {};
-    
+
 //     for (const state of testStates) {
 //       try {
 //         const data = await fetchMarketData({
@@ -614,7 +614,7 @@ router.get('/compare', verifyAuth, async (req, res) => {
 //           commodity,
 //           limit: 1
 //         });
-        
+
 //         results[state] = {
 //           available: data.records && data.records.length > 0,
 //           recordCount: data.records?.length || 0
@@ -626,9 +626,9 @@ router.get('/compare', verifyAuth, async (req, res) => {
 //         };
 //       }
 //     }
-    
+
 //     const availableStates = Object.keys(results).filter(s => results[s].available);
-    
+
 //     res.json({
 //       commodity,
 //       availableStates,
@@ -636,7 +636,7 @@ router.get('/compare', verifyAuth, async (req, res) => {
 //       totalAvailable: availableStates.length,
 //       details: results
 //     });
-    
+
 //   } catch (error) {
 //     res.status(500).json({ error: error.message });
 //   }

@@ -30,7 +30,7 @@ const verifyAuth = async (req, res, next) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    
+
     if (error || !user) {
       return res.status(401).json({ error: 'Invalid token' });
     }
@@ -113,8 +113,8 @@ Carefully examine the image and return a JSON response with this exact structure
 - Consider common Indian crop diseases`;
 
     // Call Gemini Vision API
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+
     const result = await model.generateContent([
       prompt,
       {
@@ -135,9 +135,9 @@ Carefully examine the image and return a JSON response with this exact structure
       const jsonText = jsonMatch ? jsonMatch[1] : text;
       analysis = JSON.parse(jsonText);
     } catch (parseError) {
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to parse AI response',
-        raw_response: text 
+        raw_response: text
       });
     }
 

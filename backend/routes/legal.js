@@ -9,7 +9,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Configure multer for memory storage
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
@@ -25,7 +25,7 @@ const upload = multer({
 router.get('/templates', async (req, res) => {
   try {
     console.log('Fetching files from legal-templates bucket...');
-    
+
     // List files from the storage bucket
     const { data: files, error } = await supabase
       .storage
@@ -40,14 +40,14 @@ router.get('/templates', async (req, res) => {
     console.log('Error:', error);
 
     if (error) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: error.message,
-        details: error 
+        details: error
       });
     }
 
     if (!files || files.length === 0) {
-      return res.json({ 
+      return res.json({
         templates: [],
         message: 'No files found in bucket'
       });
@@ -74,16 +74,16 @@ router.get('/templates', async (req, res) => {
         };
       });
 
-    res.json({ 
+    res.json({
       templates,
-      count: templates.length 
+      count: templates.length
     });
-    
+
   } catch (error) {
     console.error('Templates fetch error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message,
-      stack: error.stack 
+      stack: error.stack
     });
   }
 });
@@ -146,7 +146,7 @@ Analyze the document and return a JSON response with this exact structure:
 `;
 
     // Call Gemini AI
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -158,9 +158,9 @@ Analyze the document and return a JSON response with this exact structure:
       const jsonText = jsonMatch ? jsonMatch[1] : text;
       analysis = JSON.parse(jsonText);
     } catch (parseError) {
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to parse AI response',
-        raw_response: text 
+        raw_response: text
       });
     }
 
@@ -182,7 +182,7 @@ router.get('/test-storage', async (req, res) => {
       .storage
       .listBuckets();
 
-    res.json({ 
+    res.json({
       buckets,
       error,
       message: 'Connection test'

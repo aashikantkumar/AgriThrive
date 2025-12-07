@@ -7,7 +7,7 @@ const { HumanMessage, AIMessage, SystemMessage } = require('@langchain/core/mess
 // Initialize Gemini 2.0 Flash model
 const model = new ChatGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY,
-  model: 'gemini-2.0-flash',
+  model: 'gemini-2.5-flash-lite',
   temperature: 0.7,
 });
 
@@ -21,7 +21,7 @@ const verifyAuth = async (req, res, next) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    
+
     if (error || !user) {
       return res.status(401).json({ error: 'Invalid token' });
     }
@@ -88,7 +88,7 @@ router.post('/message', verifyAuth, async (req, res) => {
     if (conversation_history && Array.isArray(conversation_history)) {
       // Take only last 3 pairs (6 messages max)
       const recentHistory = conversation_history.slice(-6);
-      
+
       recentHistory.forEach(msg => {
         if (msg.role === 'user') {
           messages.push(new HumanMessage(msg.content));
